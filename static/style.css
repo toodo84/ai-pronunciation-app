@@ -1,11 +1,13 @@
 :root {
-    --bg-color: #7d96b6; /* LINE-like background color */
+    --bg-color: #7d96b6;
+    /* LINE-like background color */
     --header-bg: #2c3e50;
     --chat-bg: #8cabd9;
     --sent-bubble: #9de694;
     --received-bubble: #ffffff;
     --text-primary: #333;
-    --btn-primary: #00c300; /* LINE Green */
+    --btn-primary: #00c300;
+    /* LINE Green */
     --btn-hover: #00a500;
 }
 
@@ -27,7 +29,7 @@ body {
     background-color: var(--chat-bg);
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
 }
 
 @media (min-width: 481px) {
@@ -42,7 +44,7 @@ body {
     background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
     padding: 15px 20px;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     z-index: 10;
 }
 
@@ -84,8 +86,10 @@ body {
     font-size: 0.95rem;
     line-height: 1.4;
     position: relative;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     word-wrap: break-word;
+    white-space: pre-wrap;
+    /* Allows \n to break lines properly */
 }
 
 .message.sent .bubble {
@@ -98,6 +102,43 @@ body {
     background-color: var(--received-bubble);
     color: var(--text-primary);
     border-top-left-radius: 5px;
+}
+
+/* Feedback Survey Styles */
+.feedback-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    margin-left: 5px;
+    /* Align with received message */
+}
+
+.feedback-btn {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.feedback-btn:hover {
+    background-color: #f5f5f5;
+    transform: translateY(-1px);
+}
+
+.feedback-btn:active {
+    transform: scale(0.95);
+}
+
+.feedback-btn.selected {
+    background-color: var(--btn-primary);
+    color: white;
+    border-color: var(--btn-primary);
 }
 
 .chat-input-area {
@@ -126,9 +167,11 @@ body {
     -webkit-user-select: none;
 }
 
-.record-btn:active, .record-btn.recording {
+.record-btn:active,
+.record-btn.recording {
     transform: scale(0.95);
-    background-color: #e74c3c; /* Red when recording */
+    background-color: #e74c3c;
+    /* Red when recording */
 }
 
 .record-btn.recording #record-text {

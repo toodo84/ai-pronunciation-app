@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             isRecording = true;
             recordBtn.classList.add('recording');
-            recordText.textContent = "放開結束";
+            recordText.textContent = "放開結束"; // Change text to indicate active recording
             statusText.textContent = "正在錄音...";
 
             // Store reference to audioData so stopRecording can access it
@@ -71,21 +71,29 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopRecording() {
         if (!isRecording) return;
 
-        isRecording = false;
-        recordBtn.classList.remove('recording');
-        recordText.textContent = "按住說話";
-        statusText.textContent = "處理中...";
+        // Add a small delay to ensure the last part of the audio is captured
+        setTimeout(() => {
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            recordText.textContent = "按住說話";
+            statusText.textContent = "處理中...";
 
-        // Stop recording
-        recorder.disconnect();
-        input.disconnect();
-        mediaStream.getTracks().forEach(track => track.stop());
+            if (recorder && input) {
+                // Stop recording
+                recorder.disconnect();
+                input.disconnect();
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
 
-        // Process audio
-        const audioData = recorder.audioData;
-        const wavBlob = exportWAV(audioData.buffer, audioData.size, audioContext.sampleRate);
-
-        sendAudioToServer(wavBlob);
+            // Process audio
+            if (recorder && recorder.audioData) {
+                const audioData = recorder.audioData;
+                const wavBlob = exportWAV(audioData.buffer, audioData.size, audioContext.sampleRate);
+                sendAudioToServer(wavBlob);
+            }
+        }, 500); // 500ms delay
     }
 
     function exportWAV(buffers, bufferLength, sampleRate) {
@@ -154,7 +162,14 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 statusText.textContent = "";
                 if (data.text) {
-                    addMessage(data.text, 'received');
+                    // Separate the intro and the content
+                    addMessage("我猜你想說的是...", 'received');
+                    const messageDiv = addMessage(data.text, 'received');
+
+                    // Only show feedback for valid results (filtering out error messages if any)
+                    if (!data.text.includes("抱歉") && !data.text.includes("錯誤")) {
+                        showFeedbackOptions(messageDiv, data.text);
+                    }
                 } else if (data.error) {
                     addMessage(`錯誤: ${data.error}`, 'received');
                 }
@@ -177,6 +192,172 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.appendChild(bubble);
         chatWindow.appendChild(messageDiv);
 
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return messageDiv; // Return the div for appending subsequent options
+    }
+
+    function showFeedbackOptions(parentMessageDiv, originalText) {
+        const optionsContainer = document.createElement('div');
+        optionsContainer.classList.add('feedback-options');
+
+        const options = [
+            { label: '完全正確', value: 'perfect' },
+            { label: '差不多正確', value: 'good' },
+            { label: '幾乎錯誤', value: 'bad' }
+        ];
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.classList.add('feedback-btn');
+            btn.textContent = opt.label;
+
+            btn.onclick = function () {
+                // Disable all buttons in this group
+                const allBtns = optionsContainer.querySelectorAll('.feedback-btn');
+                allBtns.forEach(b => {
+                    b.disabled = true;
+                    b.style.opacity = '0.6';
+                    b.style.cursor = 'default';
+                });
+
+                // Highlight selected
+                btn.classList.add('selected');
+                btn.style.opacity = '1';
+
+                // Handle Logic based on selection
+                if (opt.value === 'perfect') {
+                    addMessage("很棒！歡迎繼續練習。👍", 'received');
+                } else if (opt.value === 'good') {
+                    handleAlmostCorrect(originalText);
+                } else if (opt.value === 'bad') {
+                    handleAlmostWrong(originalText);
+                }
+            };
+
+            optionsContainer.appendChild(btn);
+        });
+
+        parentMessageDiv.appendChild(optionsContainer);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function handleAlmostCorrect(originalText) {
+        // Fetch mock suggestions from server
+        fetch('/get_similar_suggestions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: originalText })
+        })
+            .then(res => res.json())
+            .then(data => {
+                const suggestions = data.suggestions; // Expecting array of 2 strings
+
+                // Format the message with numbered options
+                const suggestionMsg = `還是你想說的是...\n1. ${suggestions[0]}\n2. ${suggestions[1]}`;
+                addMessage(suggestionMsg, 'received');
+
+                // Create buttons container
+                const optionsContainer = document.createElement('div');
+                optionsContainer.classList.add('feedback-options');
+
+                const choices = [
+                    { label: '1 正確', text: suggestions[0] },
+                    { label: '2 正確', text: suggestions[1] },
+                    { label: '都不正確', text: null }
+                ];
+
+                choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.classList.add('feedback-btn');
+                    btn.textContent = choice.label;
+                    btn.onclick = () => {
+                        // Disable buttons
+                        const btns = optionsContainer.querySelectorAll('.feedback-btn');
+                        btns.forEach(b => {
+                            b.disabled = true;
+                            b.style.opacity = '0.6';
+                            b.style.cursor = 'default';
+                        });
+
+                        // Highlight selected
+                        btn.classList.add('selected');
+                        btn.style.opacity = '1';
+
+                        if (choice.text) {
+                            addMessage(`好的，確認是「${choice.text}」。`, 'received');
+                        } else {
+                            // If "None", fallback to manual input like 'bad' case
+                            addMessage("那請告訴我正確的內容：", 'received');
+                            handleAlmostWrong(originalText);
+                        }
+                    };
+                    optionsContainer.appendChild(btn);
+                });
+
+                // Append options to the LAST received message bubble
+                const lastMsg = chatWindow.lastElementChild;
+                lastMsg.appendChild(optionsContainer);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            });
+    }
+
+    function handleAlmostWrong(originalText) {
+        // Show input field for correction
+        const inputContainer = document.createElement('div');
+        inputContainer.style.marginTop = '10px';
+        inputContainer.style.display = 'flex';
+        inputContainer.style.gap = '5px';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = '請輸入正確內容...';
+        input.style.flex = '1';
+        input.style.padding = '8px';
+        input.style.borderRadius = '5px';
+        input.style.border = '1px solid #ccc';
+
+        const sendBtn = document.createElement('button');
+        sendBtn.textContent = '送出';
+        sendBtn.style.padding = '8px 15px';
+        sendBtn.style.backgroundColor = 'var(--btn-primary)';
+        sendBtn.style.color = 'white';
+        sendBtn.style.border = 'none';
+        sendBtn.style.borderRadius = '5px';
+        sendBtn.style.cursor = 'pointer';
+
+        sendBtn.onclick = () => {
+            const correctText = input.value.trim();
+            if (!correctText) return;
+
+            // Remove input UI
+            inputContainer.remove();
+
+            // Show user correction
+            addMessage(`修正：${correctText}`, 'sent');
+
+            // Analyze
+            addMessage("分析發音中...", 'received');
+
+            fetch('/analyze_correction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wrong_text: originalText,
+                    correct_text: correctText
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    addMessage(`💡 發音建議：\n${data.advice}`, 'received');
+                });
+        };
+
+        inputContainer.appendChild(input);
+        inputContainer.appendChild(sendBtn);
+
+        // Append to the last message bubble
+        const lastMsg = chatWindow.lastElementChild;
+        lastMsg.appendChild(inputContainer);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 });
