@@ -9,9 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let recorder;
     let input;
     let isRecording = false;
+    let isProcessing = false; // New flag to prevent duplicate submissions
 
     // Handle recording interactions
-    recordBtn.addEventListener('mousedown', startRecording);
+    recordBtn.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Only left click
+        startRecording();
+    });
     recordBtn.addEventListener('mouseup', stopRecording);
     recordBtn.addEventListener('mouseleave', () => {
         if (isRecording) stopRecording();
@@ -19,16 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Touch events for mobile
     recordBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent mouse emulation
         startRecording();
     });
     recordBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent mouse emulation
         stopRecording();
     });
 
     async function startRecording() {
-        if (isRecording) return;
+        if (isRecording || isProcessing) return;
 
         try {
             mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -56,10 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             isRecording = true;
             recordBtn.classList.add('recording');
-            recordText.textContent = "放開結束"; // Change text to indicate active recording
+            recordText.textContent = "放開結束";
             statusText.textContent = "正在錄音...";
 
-            // Store reference to audioData so stopRecording can access it
             recorder.audioData = audioData;
 
         } catch (err) {
@@ -71,15 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopRecording() {
         if (!isRecording) return;
 
+        isRecording = false;
+        isProcessing = true; // Lock
+
+        recordBtn.classList.remove('recording');
+        recordText.textContent = "按住說話";
+        statusText.textContent = "處理中...";
+
         // Add a small delay to ensure the last part of the audio is captured
         setTimeout(() => {
-            isRecording = false;
-            recordBtn.classList.remove('recording');
-            recordText.textContent = "按住說話";
-            statusText.textContent = "處理中...";
-
             if (recorder && input) {
-                // Stop recording
                 recorder.disconnect();
                 input.disconnect();
             }
@@ -88,12 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Process audio
-            if (recorder && recorder.audioData) {
+            if (recorder && recorder.audioData && recorder.audioData.size > 0) {
                 const audioData = recorder.audioData;
                 const wavBlob = exportWAV(audioData.buffer, audioData.size, audioContext.sampleRate);
                 sendAudioToServer(wavBlob);
+            } else {
+                isProcessing = false; // Reset if invalid recording
+                statusText.textContent = "";
             }
-        }, 500); // 500ms delay
+        }, 500);
     }
 
     function exportWAV(buffers, bufferLength, sampleRate) {
@@ -160,7 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
         })
             .then(response => response.json())
             .then(data => {
+                isProcessing = false; // Unlock
                 statusText.textContent = "";
+
                 if (data.text) {
                     // Separate the intro and the content
                     addMessage("我猜你想說的是...", 'received');
@@ -175,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(error => {
+                isProcessing = false; // Unlock
                 console.error('Error:', error);
                 statusText.textContent = "連線錯誤";
                 addMessage("連線錯誤，請稍後再試。", 'received');
@@ -193,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatWindow.appendChild(messageDiv);
 
         chatWindow.scrollTop = chatWindow.scrollHeight;
-        return messageDiv; // Return the div for appending subsequent options
+        return messageDiv;
     }
 
     function showFeedbackOptions(parentMessageDiv, originalText) {
@@ -250,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
             .then(res => res.json())
             .then(data => {
-                const suggestions = data.suggestions; // Expecting array of 2 strings
+                const suggestions = data.suggestions;
 
                 // Format the message with numbered options
                 const suggestionMsg = `還是你想說的是...\n1. ${suggestions[0]}\n2. ${suggestions[1]}`;

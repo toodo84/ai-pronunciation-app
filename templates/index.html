@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,16 +9,17 @@
     <!-- Google Fonts for better aesthetics -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="chat-container">
         <header class="chat-header">
             <h1>AI 正音教練</h1>
         </header>
-        
+
         <div class="chat-window" id="chat-window">
             <!-- Messages will appear here -->
             <div class="message received">
-                <div class="bubble">你好！按下麥克風按鈕開始練習發音吧。</div>
+                <div class="bubble">你好！按下麥克風按鈕後，請等候約 1 秒再開始說話，講完整句後再放開按鈕喔。</div>
             </div>
         </div>
 
@@ -32,4 +34,5 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+
 </html>
