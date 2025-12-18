@@ -13,6 +13,13 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def index():
     return render_template('index.html')
 
+@app.after_request
+def add_header(response):
+    # 防止瀏覽器快取，確保每次都拿到最新版本的 JS/CSS
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    return response
+
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     if 'audio_data' not in request.files:
