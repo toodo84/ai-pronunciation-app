@@ -1,14 +1,18 @@
 :root {
-    --bg-color: #7d96b6;
-    /* LINE-like background color */
-    --header-bg: #2c3e50;
-    --chat-bg: #8cabd9;
-    --sent-bubble: #9de694;
+    --bg-color: #f2e6d8;
+    /* 沈穩燕麥背景 */
+    --header-bg: #e58010;
+    /* 深橘標題 */
+    --chat-bg: #f2e6d8;
+    /* 聊天區背景 */
+    --sent-bubble: #ffac33;
+    /* 亮橘對話框 */
     --received-bubble: #ffffff;
     --text-primary: #333;
-    --btn-primary: #00c300;
-    /* LINE Green */
-    --btn-hover: #00a500;
+    --btn-primary: #e58010;
+    /* 深橘按鈕 */
+    --btn-hover: #ffac33;
+    /* 亮橘懸停 */
 }
 
 body {
